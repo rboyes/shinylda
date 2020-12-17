@@ -16,7 +16,9 @@ library(tsne)
 ui <- shinyUI(
   fluidPage(
     useShinyjs(),
-    titlePanel("LDA Visualisation"),
+    titlePanel(h1("Latent Dirichlet Allocation Visualiser"), windowTitle = "Latent Dirichlet Allocation Visualiser"),
+    titlePanel(h5(HTML("<p>This Shiny app performs Latent Dirichlet Allocation on a set of text entries, initially using <a href='https://31.125.158.39/donald-trump-tweets.csv'>Donald Trump's Tweets from his 2016 election campaign</a>.</p>
+    <p>You can upload your own text in a similar format, simply a CSV file with a line of text in each cell. You can also download the HTML visualisation so it can be used again as a static web page.</p><hr>"))),
     sidebarLayout(
 
       # Sidebar panel for inputs ----
@@ -73,18 +75,27 @@ server <- shinyServer(function(input, output, session) {
     print("Running function")
     shinyjs::disable(id="downloadHTML")
     
-    req(input$file1)
-
+    if(is.null(input$file1)) {
+      text = read.csv("donald-trump-tweets.csv", 
+                      header = TRUE, 
+                      sep = ',', 
+                      quote = "\"")
+    }
+    else {
+      text = read.csv(input$file1$datapath,
+                      header = input$header,
+                      sep = input$sep,
+                      quote = input$quote)
+      req(input$file1)  
+    }
+    
+    
     withProgress(message = "Calculating topics...", expr = {
         
       # when reading semicolon separated files,
       # having a comma separator causes `read.csv` to error
       tryCatch(
       {
-          text = read.csv(input$file1$datapath,
-                          header = input$header,
-                          sep = input$sep,
-                          quote = input$quote)
           textdf <- data.frame(text)
           df <- textdf[1]
           textBody2 <- sapply(df, as.character)
