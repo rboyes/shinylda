@@ -18,7 +18,8 @@ ui <- shinyUI(
     useShinyjs(),
     titlePanel(h1("Latent Dirichlet Allocation Visualiser"), windowTitle = "Latent Dirichlet Allocation Visualiser"),
     titlePanel(h5(HTML("<p>This Shiny app performs Latent Dirichlet Allocation on a set of text entries, initially using <a href='http://31.125.158.39/donald-trump-tweets.csv'>Donald Trump's Tweets from his 2016 election campaign</a>.</p>
-    <p>You can upload your own text in a similar format, simply a CSV file with a line of text in each cell. You can also download the HTML visualisation so it can be used again as a static web page.</p><hr>"))),
+    <p>You can upload your own text in a similar format, simply a CSV file with a line of text in each cell. 
+                       You can also download the HTML visualisation so it can be used again as a static web page, as well as a CSV of the processed topics that each cell of text belongs to.</p><hr>"))),
     sidebarLayout(
 
       # Sidebar panel for inputs ----
@@ -36,7 +37,9 @@ ui <- shinyUI(
                              "text/comma-separated-values,text/plain",
                              ".csv")),
         
-        downloadButton(outputId = "downloadHTML", label = "Download"),
+        div(style="display:inline-block; vertical-align:top;", downloadButton(outputId = "downloadHTML", label = "Download HTML")),
+        div(style="display:inline-block; vertical-align:top;", downloadButton(outputId = "downloadCSV", label = "Download CSV")),
+        
         # Input: Checkbox if file has header ----
         checkboxInput("header", "Header", TRUE),
         
@@ -70,10 +73,14 @@ server <- shinyServer(function(input, output, session) {
   
   ldaJsonString <- reactiveVal(value = "")
   shinyjs::disable(id="downloadHTML")
+  shinyjs::disable(id="downloadCSV")
+  shared_data <- reactiveValues()
+  
   output$myChart <- renderVis({
 
     print("Running function")
     shinyjs::disable(id="downloadHTML")
+    shinyjs::disable(id="downloadCSV")
     
     if(is.null(input$file1)) {
       text = read.csv("donald-trump-tweets.csv", 
@@ -156,6 +163,30 @@ server <- shinyServer(function(input, output, session) {
           incProgress(amount = 0.1)
           
           print("Fitted topics")
+          
+          # create the dataframe for the download csv button
+          textdf2 <- data.frame(textdf[uniq,1])
+          topic <- topics(fitted) %>% as.matrix()
+          tterms <- terms(fitted,as.numeric(input$nTerms)) %>% t() %>% data.frame()
+          
+          topic_nums <- c(1:input$nTerms)
+          tterms <- cbind(tterms, topic_nums) %>% data.frame()
+          names(tterms) <- c(paste("word", 1:input$nTerms), "topic")
+          colnames(tterms)[colnames(tterms) == 'topic_nums'] <- "topic"
+          
+          textdf3 <- cbind(textdf2, topic)
+          final_df <- join(textdf3, tterms, type = "left", by = "topic")
+          print(paste("nrow(final_df):", nrow(final_df)))
+          topic_probs <- fitted@gamma
+          print(paste("nrow(fitted@gamma):", nrow(fitted@gamma)))
+          print(paste("nrow(topic_probs):", nrow(topic_probs)))
+          names(topic_probs) <- paste("topic", 1:input$nTerms, "prob")
+          print(paste("nrow(final_df):", nrow(final_df)))
+          final_df <- cbind(final_df, topic_probs)
+          colnames(final_df)[1] <- colnames(textdf)[1]
+          
+          shared_data$final_df <- final_df          
+          
           createdTopics = TRUE
           
         },
@@ -196,6 +227,7 @@ server <- shinyServer(function(input, output, session) {
         incProgress(amount = 0.1)
         
         shinyjs::enable(id="downloadHTML")
+        shinyjs::enable(id="downloadCSV")
         
         ldaJsonString(json)
         
@@ -255,8 +287,16 @@ server <- shinyServer(function(input, output, session) {
       "
       
       writeLines(sprintf(htmlTemplate, ldaJsonString()), file)
-    }
-  )
+    })
+    
+    output$downloadCSV <- downloadHandler(
+      filename <- function(variables) {
+        paste("lda-details_", input$nTerms, "_topics.csv", sep = "")
+      },
+      content <- function(file) {
+        write.csv(shared_data$final_df, file, row.names = FALSE)
+      }
+    )
 })
 
 shinyApp(ui = ui, server = server)
