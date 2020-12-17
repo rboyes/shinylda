@@ -17,7 +17,7 @@ ui <- shinyUI(
   fluidPage(
     useShinyjs(),
     titlePanel(h1("Latent Dirichlet Allocation Visualiser"), windowTitle = "Latent Dirichlet Allocation Visualiser"),
-    titlePanel(h5(HTML("<p>This Shiny app performs Latent Dirichlet Allocation on a set of text entries, initially using <a href='https://31.125.158.39/donald-trump-tweets.csv'>Donald Trump's Tweets from his 2016 election campaign</a>.</p>
+    titlePanel(h5(HTML("<p>This Shiny app performs Latent Dirichlet Allocation on a set of text entries, initially using <a href='http://31.125.158.39/donald-trump-tweets.csv'>Donald Trump's Tweets from his 2016 election campaign</a>.</p>
     <p>You can upload your own text in a similar format, simply a CSV file with a line of text in each cell. You can also download the HTML visualisation so it can be used again as a static web page.</p><hr>"))),
     sidebarLayout(
 
